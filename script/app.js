@@ -38,19 +38,23 @@ import { ascii } from './ascii.js';
 			const asciiFrames = [];
 
 			// 1. Convert all frames
+			// Inside your processGIF reader.onload function:
 			for (const frame of frames) {
-				// 1. Calculate a new, smaller size (e.g., 100px wide)
-				const scale = 100 / frame.dims.width;
-				const newWidth = 100;
-				const newHeight = frame.dims.height * scale;
+				// 1. Calculate aspect ratio to maintain proportions
+				const maxWidth = 100; // Adjust this for "resolution"
+				const scale = maxWidth / frame.dims.width;
+				const newWidth = maxWidth;
+				const newHeight = Math.floor(frame.dims.height * scale);
 
-				// 2. Use a temporary small canvas for downsampling
+				// 2. Create a small canvas for the actual conversion
 				const smallCanvas = document.createElement('canvas');
 				smallCanvas.width = newWidth;
 				smallCanvas.height = newHeight;
 				const smallCtx = smallCanvas.getContext('2d');
 
-				// 3. Draw the full frame into the small canvas
+				// 3. Draw the original high-res frame into the small canvas
+				// This downsampling process naturally "blurs" pixels together, 
+				// which the ASCII converter interprets as shades of grey.
 				const tempCanvas = document.createElement('canvas');
 				tempCanvas.width = frame.dims.width;
 				tempCanvas.height = frame.dims.height;
@@ -58,9 +62,18 @@ import { ascii } from './ascii.js';
 
 				smallCtx.drawImage(tempCanvas, 0, 0, newWidth, newHeight);
 
-				// 4. Run the converter on the DOWNSIZED canvas
+				// 4. Run the converter on the tiny, downsampled canvas
 				const converter = (filterSelect.value === 'braille') ? ascii.brailleFromCanvas : ascii.fromCanvas;
-				converter(smallCanvas, { /* ... */ });
+
+				converter(smallCanvas, {
+					contrast: 150, // Increased contrast helps detail pop
+					callback: (res) => asciiFrames.push({
+						text: res,
+						delay: frame.delay,
+						width: newWidth, // Save these for the encoder
+						height: newHeight
+					})
+				});
 			}
 
 			// 2. Display animation
