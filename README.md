@@ -16,3 +16,5 @@ A lightweight, browser-based utility that transforms animated GIFs into ASCII or
 * gif.js: Used for high-quality client-side GIF encoding.
 * Canvas API: Handles image downsampling, frame rendering, and pixel manipulation.
 
+## Run server
+```npm run dev```
