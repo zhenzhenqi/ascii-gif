@@ -17,4 +17,4 @@ A lightweight, browser-based utility that transforms animated GIFs into ASCII or
 * Canvas API: Handles image downsampling, frame rendering, and pixel manipulation.
 
 ## Run server
-'''npm run dev'''
+```npm run dev```
