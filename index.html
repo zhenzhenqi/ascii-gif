@@ -1,28 +1,30 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
+
 <head>
-	<title>ascii camera</title>
-	<meta charset="utf-8" />
- 	<link rel="stylesheet" href="css/main.css"/>
-	<link href="/favicon.png" rel="icon" type="image/png" />
-	<meta name="mobile-web-app-capable" content="yes">
+	<meta charset="UTF-8">
+	<title>GIF to ASCII GIF Converter</title>
 </head>
+
 <body>
-	<h1 id="info">Please allow this page to access your camera.</h1>
-
-	<div id="notSupported">
-		<h1>Your browser does not support the Camera API.</h1>
-		<img src="images/screenshot.png" align="center" />
+	<h1>GIF to ASCII GIF Converter</h1>
+	<div class="controls">
+		<input type="file" id="fileInput" accept="image/gif">
+		<select id="filterSelect">
+			<option value="braille">Braille (High Res)</option>
+			<option value="ascii">Classic ASCII</option>
+		</select>
+		<button id="processBtn">Start Conversion</button>
 	</div>
+	<div id="status"></div>
 
-	<pre id="ascii"></pre>
-	<button id="button">start</button>
+	<h3>Preview:</h3>
+	<pre id="ascii-preview" style="font-family: monospace; line-height: 1; letter-spacing: 0;"></pre>
 
-	<a href="https://github.com/idevelop/ascii-camera" id="fork" target="_blank">View on GitHub</a>
-	<a href="http://idevelop.github.com/" id="idevelop" target="_blank">Made by idevelop</a>
+	<h3>Result:</h3>
+	<div id="result"></div>
 
-	<script src="script/camera.js"></script>
-	<script src="script/ascii.js"></script>
-	<script src="script/app.js"></script>
+	<script type="module" src="/script/app.js"></script>
 </body>
+
 </html>

@@ -26,11 +26,15 @@ h1 {
 	margin: 0 auto;
 }
 
-#ascii {
-	font-family: 'Courier New', 'Courier', monospace;
+#ascii,
+#result {
+	font-family: 'Courier New', Courier, monospace;
 	font-size: 10px;
 	line-height: 10px;
-	letter-spacing: -1.5px;
+	/* Ensures spaces are treated literally */
+	white-space: pre;
+	/* Prevents word wrapping that breaks the frame structure */
+	word-wrap: normal;
 	text-align: center;
 }
 
