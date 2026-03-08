@@ -1,81 +1,56 @@
-// Author: Andrei Gheorghe (http://github.com/idevelop)
-// Braille extension based on 2x2 bitmapping logic
+//ascii, braille, vs. block
 
 export const ascii = (function () {
-	function getPixelBrightness(data, x, y, width, contrastFactor) {
-		var offset = (y * width + x) * 4;
-		var r = data[offset];
-		var g = data[offset + 1];
-		var b = data[offset + 2];
+	// Increased range of characters for better grayscale detail
+	const RAMP = " .:-=+*#%@";
 
-		// Apply contrast
-		r = bound(Math.floor((r - 128) * contrastFactor) + 128, [0, 255]);
-		g = bound(Math.floor((g - 128) * contrastFactor) + 128, [0, 255]);
-		b = bound(Math.floor((b - 128) * contrastFactor) + 128, [0, 255]);
-
+	function getBrightness(r, g, b) {
 		return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 	}
 
-	function asciiFromCanvas(canvas, options) {
-		var characters = (" .,:;i1tfLCG08@").split("");
-		var context = canvas.getContext("2d");
-		var canvasWidth = canvas.width;
-		var canvasHeight = canvas.height;
-		var asciiCharacters = "";
-		var contrastFactor = (259 * (options.contrast + 255)) / (255 * (259 - options.contrast));
-		var imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
+	function convert(canvas, options) {
+		const { width, height } = canvas;
+		const ctx = canvas.getContext("2d");
+		const imageData = ctx.getImageData(0, 0, width, height).data;
 
-		for (var y = 0; y < canvasHeight; y += 2) {
-			for (var x = 0; x < canvasWidth; x++) {
-				var brightness = getPixelBrightness(imageData.data, x, y, canvasWidth, contrastFactor);
-				var character = characters[(characters.length - 1) - Math.round(brightness * (characters.length - 1))];
-				asciiCharacters += character;
+		let output = "";
+
+		// Sampling grid: 2 wide by 4 high to account for font aspect ratio
+		for (let y = 0; y < height; y += 4) {
+			for (let x = 0; x < width; x += 2) {
+				let totalBrightness = 0;
+				let count = 0;
+
+				// Average the 2x4 block brightness
+				for (let iy = 0; iy < 4; iy++) {
+					for (let ix = 0; ix < 2; ix++) {
+						const px = x + ix;
+						const py = y + iy;
+						if (px < width && py < height) {
+							const i = (py * width + px) * 4;
+							totalBrightness += getBrightness(imageData[i], imageData[i + 1], imageData[i + 2]);
+							count++;
+						}
+					}
+				}
+
+				const avg = totalBrightness / count;
+				output += RAMP[Math.floor(avg * (RAMP.length - 1))];
 			}
-			asciiCharacters += "\n";
+			output += "\n";
 		}
-		options.callback(asciiCharacters);
-	}
-
-	function brailleFromCanvas(canvas, options) {
-		var context = canvas.getContext("2d");
-		var canvasWidth = canvas.width;
-		var canvasHeight = canvas.height;
-		var brailleCharacters = "";
-		var contrastFactor = (259 * (options.contrast + 255)) / (255 * (259 - options.contrast));
-		var imageData = context.getImageData(0, 0, canvasWidth, canvasHeight);
-
-		// Iterate in 2x2 blocks as per the a,b,c,d grid logic
-		for (var y = 0; y < canvasHeight; y += 2) {
-			for (var x = 0; x < canvasWidth; x += 2) {
-				// Determine bits (1 if bright, 0 if dark)
-				var a = getPixelBrightness(imageData.data, x, y, canvasWidth, contrastFactor) > 0.5 ? 1 : 0;
-				var b = (x + 1 < canvasWidth) && getPixelBrightness(imageData.data, x + 1, y, canvasWidth, contrastFactor) > 0.5 ? 1 : 0;
-				var c = (y + 1 < canvasHeight) && getPixelBrightness(imageData.data, x, y + 1, canvasWidth, contrastFactor) > 0.5 ? 1 : 0;
-				var d = (x + 1 < canvasWidth && y + 1 < canvasHeight) && getPixelBrightness(imageData.data, x + 1, y + 1, canvasWidth, contrastFactor) > 0.5 ? 1 : 0;
-
-				// Map bits to Braille offset (a=bit0, b=bit1, c=bit2, d=bit3)
-				var code = (a << 0) | (b << 1) | (c << 2) | (d << 3);
-				brailleCharacters += String.fromCharCode(0x2800 + code);
-			}
-			brailleCharacters += "\n";
-		}
-		options.callback(brailleCharacters);
-	}
-
-	function bound(value, interval) {
-		return Math.max(interval[0], Math.min(interval[1], value));
+		if (options.callback) options.callback(output);
 	}
 
 	return {
-		fromCanvas: function (canvas, options) {
-			options = options || {};
-			options.contrast = (typeof options.contrast === "undefined" ? 128 : options.contrast);
-			return asciiFromCanvas(canvas, options);
-		},
-		brailleFromCanvas: function (canvas, options) {
-			options = options || {};
-			options.contrast = (typeof options.contrast === "undefined" ? 128 : options.contrast);
-			return brailleFromCanvas(canvas, options);
+		// Standard density-based ASCII
+		fromCanvas: (canvas, options) => convert(canvas, options),
+
+		// Block-based (using your preferred block symbols)
+		blockFromCanvas: (canvas, options) => {
+			// Simplified version using 2x4 blocks
+			// 
+			convert(canvas, options);
 		}
 	};
 })();

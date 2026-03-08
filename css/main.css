@@ -26,16 +26,17 @@ h1 {
 	margin: 0 auto;
 }
 
-#ascii,
 #result {
-	font-family: 'Courier New', Courier, monospace;
+	font-family: 'Courier New', 'Courier', monospace;
 	font-size: 10px;
-	line-height: 10px;
-	/* Ensures spaces are treated literally */
+	/* Change line-height to 1 (unitless) to remove extra spacing */
+	line-height: 1;
 	white-space: pre;
-	/* Prevents word wrapping that breaks the frame structure */
 	word-wrap: normal;
 	text-align: center;
+	/* Added to keep the grid perfectly sharp */
+	image-rendering: pixelated;
+	display: inline-block;
 }
 
 #fork,

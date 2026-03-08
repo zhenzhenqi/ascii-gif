@@ -9,27 +9,30 @@ import { ascii } from './ascii.js';
 	const status = document.getElementById('status');
 	const processBtn = document.getElementById('processBtn');
 
-	// Reusable canvas for processing frames
-	const canvas = document.createElement('canvas');
-	const ctx = canvas.getContext('2d');
+	// REUSE: Define canvases once, outside the loop
+	const smallCanvas = document.createElement('canvas');
+	const tempCanvas = document.createElement('canvas');
 
-	// Helper: Draws ASCII/Braille string to canvas for the GIF encoder
 	const renderAsciiToCanvas = (text, canvas, width, height) => {
-		const lines = text.split('\n');
 		const ctx = canvas.getContext('2d');
+		const lines = text.trim().split('\n');
+		const lineHeight = height / lines.length;
+
 		ctx.fillStyle = "white";
 		ctx.fillRect(0, 0, width, height);
 		ctx.fillStyle = "black";
-		ctx.font = "10px monospace";
+		// Use a dynamic font size to ensure the text fills the allocated space
+		ctx.font = `${lineHeight}px monospace`;
 		ctx.textBaseline = "top";
-		lines.forEach((line, i) => ctx.fillText(line, 0, i * 10));
+		lines.forEach((line, i) => ctx.fillText(line, 0, i * lineHeight));
 	};
 
 	const processGIF = async () => {
 		const file = fileInput.files[0];
 		if (!file) return alert("Please select a GIF first.");
 
-		status.innerText = "Parsing and Converting...";
+		resultContainer.innerText = "";
+		status.innerText = "Processing frames...";
 		const reader = new FileReader();
 
 		reader.onload = async (e) => {
@@ -37,62 +40,58 @@ import { ascii } from './ascii.js';
 			const frames = decompressFrames(gif, true);
 			const asciiFrames = [];
 
-			// 1. Convert all frames
-			// Inside your processGIF reader.onload function:
+			// Increase maxWidth for higher resolution; the density ramp will handle the detail
+			const maxWidth = 200;
+
 			for (const frame of frames) {
-				// 1. Calculate aspect ratio to maintain proportions
-				const maxWidth = 100; // Adjust this for "resolution"
 				const scale = maxWidth / frame.dims.width;
 				const newWidth = maxWidth;
 				const newHeight = Math.floor(frame.dims.height * scale);
 
-				// 2. Create a small canvas for the actual conversion
-				const smallCanvas = document.createElement('canvas');
+				// Setup reuse canvases
 				smallCanvas.width = newWidth;
 				smallCanvas.height = newHeight;
-				const smallCtx = smallCanvas.getContext('2d');
-
-				// 3. Draw the original high-res frame into the small canvas
-				// This downsampling process naturally "blurs" pixels together, 
-				// which the ASCII converter interprets as shades of grey.
-				const tempCanvas = document.createElement('canvas');
 				tempCanvas.width = frame.dims.width;
 				tempCanvas.height = frame.dims.height;
-				tempCanvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(frame.patch), frame.dims.width, frame.dims.height), 0, 0);
 
-				smallCtx.drawImage(tempCanvas, 0, 0, newWidth, newHeight);
+				const tempCtx = tempCanvas.getContext('2d');
+				tempCtx.putImageData(new ImageData(new Uint8ClampedArray(frame.patch), frame.dims.width, frame.dims.height), 0, 0);
 
-				// 4. Run the converter on the tiny, downsampled canvas
-				const converter = (filterSelect.value === 'braille') ? ascii.brailleFromCanvas : ascii.fromCanvas;
+				smallCanvas.getContext('2d').drawImage(tempCanvas, 0, 0, newWidth, newHeight);
 
-				converter(smallCanvas, {
-					contrast: 150, // Increased contrast helps detail pop
+				// Run the density-based converter
+				ascii.fromCanvas(smallCanvas, {
+					contrast: 150,
 					callback: (res) => asciiFrames.push({
 						text: res,
 						delay: frame.delay,
-						width: newWidth, // Save these for the encoder
+						width: newWidth,
 						height: newHeight
 					})
 				});
 			}
 
-			// 2. Display animation
-			status.innerText = "Conversion complete! Generating download...";
+			status.innerText = "Generation complete!";
 			playAnimation(asciiFrames);
-
-			// 3. Generate Downloadable GIF
 			createDownloadableGIF(asciiFrames);
 		};
 		reader.readAsArrayBuffer(file);
 	};
 
+	let animationId = null;
+
 	const playAnimation = (frames) => {
+		// 1. Cancel the previous loop if it exists
+		if (animationId) cancelAnimationFrame(animationId);
+
 		let i = 0;
 		const animate = () => {
 			resultContainer.innerText = frames[i].text;
-			setTimeout(() => {
+
+			// 2. Store the current animation ID so we can cancel it later
+			animationId = setTimeout(() => {
 				i = (i + 1) % frames.length;
-				requestAnimationFrame(animate);
+				animationId = requestAnimationFrame(animate);
 			}, frames[i].delay * 10);
 		};
 		animate();
@@ -101,11 +100,14 @@ import { ascii } from './ascii.js';
 	const createDownloadableGIF = (asciiFrames) => {
 		const gif = new GIF({ workers: 2, quality: 10, workerScript: '/gif.worker.js' });
 
+		// REUSE: Use one local canvas for the encoder
+		const encoderCanvas = document.createElement('canvas');
+
 		asciiFrames.forEach(f => {
-			const c = document.createElement('canvas');
-			c.width = f.width; c.height = f.height;
-			renderAsciiToCanvas(f.text, c, f.width, f.height);
-			gif.addFrame(c, { delay: f.delay * 10 });
+			encoderCanvas.width = f.width;
+			encoderCanvas.height = f.height;
+			renderAsciiToCanvas(f.text, encoderCanvas, f.width, f.height);
+			gif.addFrame(encoderCanvas, { delay: f.delay * 10 });
 		});
 
 		gif.on('finished', (blob) => {
