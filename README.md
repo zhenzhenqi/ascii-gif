@@ -1,7 +1,7 @@
 GIF to ASCII Converter
 ============
 
-A lightweight, browser-based utility that transforms animated GIFs into ASCII or Braille-based animations. Process, preview, and download your favorite GIFs as high-fidelity text-based art.
+A lightweight, browser-based utility that transforms animated GIFs into ASCII or Braille-based animations. Process, preview, and download as text-based art.
 
 
 ## Features
